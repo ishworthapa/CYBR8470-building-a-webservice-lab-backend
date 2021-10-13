@@ -156,7 +156,7 @@ class ActivateIFTTT(APIView):
     permission_classes = (AllowAny,)
     parser_classes = (parsers.JSONParser,parsers.FormParser)
     renderer_classes = (renderers.JSONRenderer, )
-    #https://maker.ifttt.com/use/d1TjVE2q3P8GOeSz5r67D5coiAyUVSy-MqpMZomfHVc
+
     def post(self,request):
         print 'REQUEST DATA'
         print str(request.data)
