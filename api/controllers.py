@@ -98,6 +98,8 @@ class Session(APIView):
 
     def get(self, request, *args, **kwargs):
         # Get the current user
+        print("******************************************")
+        print(request)
         if request.user.is_authenticated():
             return self.form_response(True, request.user.id, request.user.username)
         return self.form_response(False, None, None)
@@ -124,8 +126,75 @@ class Events(APIView):
     parser_classes = (parsers.JSONParser,parsers.FormParser)
     renderer_classes = (renderers.JSONRenderer, )
 
+    def get(self, request, format=None):
+        events = Event.objects.all()
+        json_data = serializers.serialize('json', events)
+        content = {'events':json_data}
+        return HttpResponse(json_data,content_type='json')
+
+    def post(self, request, *args, **kwargs):
+        print('Request Data')
+        print(str(request.data))
+        eventtype = request.data.get('eventtype')
+        timestamp = int(request.data.get('timestamp')/1000)
+        userid = request.data.get('userid')
+        requestor = request.META['REMOTE_ADDR']
+
+        newEvent = Event( eventtype=eventtype, timestamp=datetime.date.fromtimestamp(timestamp),userid=userid,requestor=requestor)
+        try:
+          newEvent.clean_fields()
+        except ValidationError as e:
+          print e
+          return Response({'success':False, 'error':e}, status=status.HTTP_400_BAD_REQUEST)
+
+        newEvent.save()
+        print 'New Event Logged from: ' + requestor
+        return Response({'success': True}, status=status.HTTP_200_OK)
+
 
 class ActivateIFTTT(APIView):
     permission_classes = (AllowAny,)
     parser_classes = (parsers.JSONParser,parsers.FormParser)
     renderer_classes = (renderers.JSONRenderer, )
+    #https://maker.ifttt.com/use/d1TjVE2q3P8GOeSz5r67D5coiAyUVSy-MqpMZomfHVc
+    def post(self,request):
+        print 'REQUEST DATA'
+        print str(request.data)
+
+        eventtype = request.data.get('eventtype')
+        timestamp = int(request.data.get('timestamp'))
+        requestor = request.META['REMOTE_ADDR']
+        api_key = ApiKey.objects.all().first()
+        event_hook = "test"
+
+        print "Creating New event"
+        print(timestamp)
+        newEvent = Event(
+            eventtype=eventtype,
+            timestamp=datetime.date.fromtimestamp(timestamp/1000),
+            userid=str(api_key.owner),
+            requestor=requestor
+        )
+
+        print newEvent
+        print "Sending Device Event to IFTTT hook: " + str(event_hook)
+
+        #send the new event to IFTTT and print the result
+        event_req = requests.post('https://maker.ifttt.com/trigger/'+str(event_hook)+'/with/key/'+api_key.key, data= {
+            'value1' : timestamp,
+            'value2':  "\""+str(eventtype)+"\"",
+            'value3' : "\""+str(requestor)+"\""
+        })
+        print event_req.text
+
+        #check that the event is safe to store in the databse
+        try:
+            newEvent.clean_fields()
+        except ValidationError as e:
+            print e
+            return Response({'success':False, 'error':e}, status=status.HTTP_400_BAD_REQUEST)
+
+        #log the event in the DB
+        newEvent.save()
+        print 'New Event Logged'
+        return Response({'success': True}, status=status.HTTP_200_OK)
