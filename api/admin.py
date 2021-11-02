@@ -8,3 +8,5 @@ from api.models import *
 # Register your models here.
 admin.site.register(Event, EventAdmin)
 admin.site.register(ApiKey, ApiKeyAdmin)
+admin.site.register(Breed, BreedAdmin)
+admin.site.register(Dog, DogAdmin)
