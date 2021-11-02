@@ -40,6 +40,7 @@ import json, datetime, pytz
 from django.core import serializers
 import requests
 
+import bleach
 
 def home(request):
    """
@@ -121,6 +122,48 @@ class Session(APIView):
         logout(request)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+class Dogs(APIView):
+    permission_classes = (AllowAny,)
+    parser_classes = (parsers.JSONParser, parsers.FormParser)
+    render_classes = (renderers.JSONRenderer,)
+
+    def get(self, request, format=None):
+        dogs = Dogs.objects.all()
+        print("******************************************")
+        print(dogs)
+        json_data = serializers.serialize('json', dogs)
+        content = {'dogs':json_data}
+        return HttpResponse(json_data, content_type='json')
+
+    def post(self, request, *args, **kwargs):
+        return Response({'success': True}, status=status.HTTP_200_OK)
+
+class Breeds(APIView):
+    permission_classes = (AllowAny,)
+    parser_classes = (parsers.JSONParser, parsers.FormParser)
+    render_classes = (renderers.JSONRenderer,)
+
+    def get(self, request, format=None):
+        breeds = Breeds.objects.all()
+        print("******************************************")
+        print(breeds)
+        json_data = serializers.serialize('json', breeds)
+        content = {'breeds':json_data}
+        return HttpResponse(json_data, content_type='json')
+
+    def post(self, request, *args, **kwargs):
+        print('New Breed')
+        print(str(request.data))
+        name = request.data.get('name')
+        size = request.data.get('size')
+        friendliness = int(request.data.get('friendliness'))
+        trainiability = int(request.data.get('trainiability'))
+        shedding_amount = int(request.data.get('shedding_amount'))
+        exercise_needs = int(request.data.get('exercise_needs'))
+        newbreed = Breed(name = name, size = size, friendliness = friendliness, trainiability = trainiability, shedding_amount = shedding_amount, exercise_needs = exercise_needs)
+        return Response({'success': True}, status=status.HTTP_200_OK)
+
+
 class Events(APIView):
     permission_classes = (AllowAny,)
     parser_classes = (parsers.JSONParser,parsers.FormParser)
@@ -135,7 +178,7 @@ class Events(APIView):
     def post(self, request, *args, **kwargs):
         print('Request Data')
         print(str(request.data))
-        eventtype = request.data.get('eventtype')
+        eventtype = bleach.clean(request.data.get('eventtype'))
         timestamp = int(request.data.get('timestamp')/1000)
         userid = request.data.get('userid')
         requestor = request.META['REMOTE_ADDR']
@@ -161,7 +204,7 @@ class ActivateIFTTT(APIView):
         print 'REQUEST DATA'
         print str(request.data)
 
-        eventtype = request.data.get('eventtype')
+        eventtype = bleach.clean(request.data.get('eventtype'))
         timestamp = int(request.data.get('timestamp'))
         requestor = request.META['REMOTE_ADDR']
         api_key = ApiKey.objects.all().first()
